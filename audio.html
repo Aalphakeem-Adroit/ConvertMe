@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Voice Recorder</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 40px; }
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .wave {
+      margin: 20px auto;
+      display: flex;
+      width: 150px;
+      height: 20px;
+      justify-content: space-between;
+      display: none;
+    }
+    .bar {
+      width: 4px;
+      background: green;
+      animation: wave 1s infinite ease-in-out;
+    }
+    .bar:nth-child(2) { animation-delay: 0.1s; }
+    .bar:nth-child(3) { animation-delay: 0.2s; }
+    .bar:nth-child(4) { animation-delay: 0.3s; }
+    .bar:nth-child(5) { animation-delay: 0.4s; }
+
+    @keyframes wave {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(2); }
+    }
+
+    #timer {
+      font-size: 1.5em;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="voiceBtn">Start Recording Voice</button>
+  <div id="timer">00:00</div>
+  <div class="wave" id="wave">
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+  </div>
+  <div id="uploadStatus"></div>
+
+  <script>
+    const voiceBtn = document.getElementById('voiceBtn');
+    const wave = document.getElementById('wave');
+    const timer = document.getElementById('timer');
+    const uploadStatus = document.getElementById('uploadStatus');
+
+    let mediaRecorder;
+    let stream;
+    let recordedChunks = [];
+    let timerInterval;
+    let startTime;
+
+    voiceBtn.onclick = async () => {
+      if (voiceBtn.textContent === 'Start Recording Voice') {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        recordedChunks = [];
+
+        mediaRecorder.ondataavailable = e => {
+          if (e.data.size > 0) recordedChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+          uploadAudio(blob);
+          stopTimer();
+          wave.style.display = 'none';
+          stream.getTracks().forEach(track => track.stop());
+
+          // Show audio preview
+          const audioPlayer = document.createElement('audio');
+          audioPlayer.controls = true;
+          audioPlayer.src = URL.createObjectURL(blob);
+          document.body.appendChild(audioPlayer);
+        };
+
+        mediaRecorder.start();
+        startTimer();
+        wave.style.display = 'flex';
+        voiceBtn.textContent = 'Stop Recording Voice';
+      } else {
+        mediaRecorder.stop();
+        voiceBtn.textContent = 'Start Recording Voice';
+      }
+    };
+
+    function startTimer() {
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const seconds = String(elapsed % 60).padStart(2, '0');
+        timer.textContent = `${minutes}:${seconds}`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+      timer.textContent = '00:00';
+    }
+
+    function uploadAudio(blob) {
+      const formData = new FormData();
+      formData.append('audio', blob, 'voice_recording.webm');
+
+      fetch('upload-voice.php', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.text())
+      .then(result => {
+        uploadStatus.innerHTML = `<p style="color:green;">${result}</p>`;
+      })
+      .catch(err => {
+        uploadStatus.innerHTML = `<p style="color:red;">Upload failed: ${err}</p>`;
+      });
+    }
+  </script>
+</body>
+</html>

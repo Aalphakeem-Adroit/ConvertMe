@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Video Recorder</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+      background: #f0f0f0;
+    }
+    video {
+      margin-top: 20px;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .wave {
+      margin: 20px auto;
+      width: 200px;
+      height: 20px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .bar {
+      width: 4px;
+      height: 100%;
+      background: red;
+      animation: wave 1s infinite ease-in-out;
+    }
+    .bar:nth-child(2) { animation-delay: 0.1s; }
+    .bar:nth-child(3) { animation-delay: 0.2s; }
+    .bar:nth-child(4) { animation-delay: 0.3s; }
+    .bar:nth-child(5) { animation-delay: 0.4s; }
+
+    @keyframes wave {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(2); }
+    }
+
+    #timer {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #333;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 1em;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background-color: #007bff;
+      color: white;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="recordBtn">Start Recording</button>
+  <div id="timer">00:00</div>
+  <div class="wave" id="wave" style="display: none;">
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+  </div>
+  <video id="video" autoplay muted></video>
+
+  <script>
+    const recordBtn = document.getElementById('recordBtn');
+    const video = document.getElementById('video');
+    const wave = document.getElementById('wave');
+    const timer = document.getElementById('timer');
+
+    let stream;
+    let mediaRecorder;
+    let startTime;
+    let timerInterval;
+
+    recordBtn.onclick = async () => {
+      if (recordBtn.textContent === 'Start Recording') {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        video.srcObject = stream;
+
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.start();
+
+        wave.style.display = 'flex';
+        startTimer();
+
+        recordBtn.textContent = 'Stop Recording';
+      } else {
+        mediaRecorder.stop();
+        stopTimer();
+
+        stream.getTracks().forEach(track => track.stop());
+        wave.style.display = 'none';
+
+        recordBtn.textContent = 'Start Recording';
+      }
+    };
+
+    function startTimer() {
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const seconds = String(elapsed % 60).padStart(2, '0');
+        timer.textContent = `${minutes}:${seconds}`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+      timer.textContent = '00:00';
+    }
+  </script>
+</body>
+</html>

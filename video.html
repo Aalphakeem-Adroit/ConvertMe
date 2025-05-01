@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Video Recorder with Upload</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+
+    video {
+      margin-top: 20px;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 10px;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .wave {
+      margin: 20px auto;
+      display: flex;
+      width: 150px;
+      height: 20px;
+      justify-content: space-between;
+      display: none;
+    }
+
+    .bar {
+      width: 4px;
+      background: red;
+      animation: wave 1s infinite ease-in-out;
+    }
+
+    .bar:nth-child(2) { animation-delay: 0.1s; }
+    .bar:nth-child(3) { animation-delay: 0.2s; }
+    .bar:nth-child(4) { animation-delay: 0.3s; }
+    .bar:nth-child(5) { animation-delay: 0.4s; }
+
+    @keyframes wave {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(2); }
+    }
+
+    #timer {
+      font-size: 1.5em;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="recordBtn">Start Recording</button>
+  <div id="timer">00:00</div>
+  <div class="wave" id="wave">
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+  </div>
+  <video id="video" autoplay muted></video>
+  <div id="uploadStatus"></div>
+
+  <script>
+    const recordBtn = document.getElementById('recordBtn');
+    const video = document.getElementById('video');
+    const wave = document.getElementById('wave');
+    const timer = document.getElementById('timer');
+    const uploadStatus = document.getElementById('uploadStatus');
+
+    let mediaRecorder;
+    let stream;
+    let recordedChunks = [];
+    let timerInterval;
+    let startTime;
+
+    recordBtn.onclick = async () => {
+      if (recordBtn.textContent === 'Start Recording') {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        video.srcObject = stream;
+
+        mediaRecorder = new MediaRecorder(stream);
+        recordedChunks = [];
+
+        mediaRecorder.ondataavailable = e => {
+          if (e.data.size > 0) recordedChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: 'video/webm' });
+          uploadVideo(blob);
+          stopTimer();
+          wave.style.display = 'none';
+          video.srcObject = null;
+          stream.getTracks().forEach(track => track.stop());
+
+          // Show preview
+          const recordedVideo = document.createElement('video');
+          recordedVideo.src = URL.createObjectURL(blob);
+          recordedVideo.controls = true;
+          recordedVideo.style.width = '90%';
+          recordedVideo.style.marginTop = '20px';
+          document.body.appendChild(recordedVideo);
+        };
+
+        mediaRecorder.start();
+        startTimer();
+        wave.style.display = 'flex';
+        recordBtn.textContent = 'Stop Recording';
+      } else {
+        mediaRecorder.stop();
+        recordBtn.textContent = 'Start Recording';
+      }
+    };
+
+    function startTimer() {
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const seconds = String(elapsed % 60).padStart(2, '0');
+        timer.textContent = `${minutes}:${seconds}`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+      timer.textContent = '00:00';
+    }
+
+    function uploadVideo(blob) {
+      const formData = new FormData();
+      formData.append('video', blob, 'recording.webm');
+
+      fetch('upload-video.php', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.text())
+      .then(result => {
+        uploadStatus.innerHTML = `<p style="color:green;">${result}</p>`;
+      })
+      .catch(err => {
+        uploadStatus.innerHTML = `<p style="color:red;">Upload failed: ${err}</p>`;
+      });
+    }
+  </script>
+</body>
+</html>

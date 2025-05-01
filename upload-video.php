@@ -1,5 +1,5 @@
 <?php
-$targetDir = "video-uploads/";
+$targetDir = "uploads/";
 
 if (!file_exists($targetDir)) {
     mkdir($targetDir, 0777, true); // create folder if it doesn't exist

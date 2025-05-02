@@ -5,7 +5,7 @@ if (!$media_url) {
     die("No media URL received.");
 }
 
-$apiKey = "afcad3491c7440298539755eac94093a";
+$apiKey = "*";
 
 // 1. Submit the transcription request
 $ch = curl_init("https://api.assemblyai.com/v2/transcript");
